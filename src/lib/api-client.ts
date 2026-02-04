@@ -79,7 +79,7 @@ class ApiClient {
 
   // Auth endpoints
   async login(email: string, password: string): Promise<AuthResponse> {
-    return this.fetch<AuthResponse>('/auth/login', {
+    return this.fetch<AuthResponse>('/auth/signin', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });

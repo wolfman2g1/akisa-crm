@@ -12,7 +12,8 @@ import type {
   CreateInvoiceDTO,
   CheckoutSessionResponse,
   SalesStatistics,
-  CalendarAuthResponse
+  CalendarAuthResponse,
+  AuthResponse
 } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -74,6 +75,14 @@ class ApiClient {
     }
 
     return response.json();
+  }
+
+  // Auth endpoints
+  async login(email: string, password: string): Promise<AuthResponse> {
+    return this.fetch<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
   }
 
   // Lead endpoints

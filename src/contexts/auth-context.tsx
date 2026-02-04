@@ -35,22 +35,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      // This is a mock implementation
-      // In a real app, you would call the API
-      const mockUser: User = {
-        id: '1',
-        email,
-        role: email.includes('admin') ? 'admin' : email.includes('provider') ? 'provider' : 'client',
-        firstName: 'Demo',
-        lastName: 'User',
-      };
+      const response = await apiClient.login(email, password);
       
-      const mockToken = 'mock-jwt-token';
-      
-      setUser(mockUser);
-      apiClient.setToken(mockToken);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      localStorage.setItem('auth_token', mockToken);
+      setUser(response.user);
+      apiClient.setToken(response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      localStorage.setItem('auth_token', response.token);
     } catch (error) {
       console.error('Login failed:', error);
       throw error;

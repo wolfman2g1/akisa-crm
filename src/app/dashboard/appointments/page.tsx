@@ -201,14 +201,14 @@ export default function AppointmentsPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Appointments</CardDescription>
-            <CardTitle className="text-3xl">{mockAppointments.length}</CardTitle>
+            <CardTitle className="text-3xl">{appointments.length}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Upcoming</CardDescription>
             <CardTitle className="text-3xl">
-              {mockAppointments.filter(a => a.status === 'confirmed' || a.status === 'tentative').length}
+              {appointments.filter(a => a.status === 'confirmed' || a.status === 'tentative').length}
             </CardTitle>
           </CardHeader>
         </Card>
@@ -216,7 +216,7 @@ export default function AppointmentsPage() {
           <CardHeader className="pb-2">
             <CardDescription>Completed</CardDescription>
             <CardTitle className="text-3xl">
-              {mockAppointments.filter(a => a.status === 'completed').length}
+              {appointments.filter(a => a.status === 'completed').length}
             </CardTitle>
           </CardHeader>
         </Card>
@@ -224,7 +224,7 @@ export default function AppointmentsPage() {
           <CardHeader className="pb-2">
             <CardDescription>Cancelled</CardDescription>
             <CardTitle className="text-3xl">
-              {mockAppointments.filter(a => a.status === 'cancelled').length}
+              {appointments.filter(a => a.status === 'cancelled').length}
             </CardTitle>
           </CardHeader>
         </Card>

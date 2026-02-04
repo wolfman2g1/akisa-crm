@@ -80,16 +80,6 @@ export default function LoginPage() {
                   disabled={isLoading}
                 />
               </div>
-
-              <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-lg space-y-2">
-                <p className="font-medium">Demo accounts:</p>
-                <div className="space-y-1 text-xs">
-                  <p><strong>Admin:</strong> admin@example.com</p>
-                  <p><strong>Provider:</strong> provider@example.com</p>
-                  <p><strong>Client:</strong> client@example.com</p>
-                  <p className="mt-2 italic">Password: any</p>
-                </div>
-              </div>
             </CardContent>
             <CardFooter>
               <Button 

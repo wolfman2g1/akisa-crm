@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -21,76 +22,81 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Search, Plus, MoreVertical, Download, Send } from 'lucide-react';
+import { Search, Plus, MoreVertical, Download, Send, CreditCard } from 'lucide-react';
 import { formatDate, formatCurrency, getStatusColor } from '@/lib/utils-format';
 import { useAuth } from '@/contexts/auth-context';
+import { useToast } from '@/components/ui/use-toast';
+import { apiClient } from '@/lib/api-client';
+import { Invoice } from '@/types';
 import Link from 'next/link';
 
-// Mock data
-const mockInvoices = [
-  {
-    id: '1',
-    invoiceNumber: 'INV-2024-001',
-    clientName: 'John Doe',
-    issueDate: '2024-11-01',
-    dueDate: '2024-11-15',
-    amount: '150.00',
-    status: 'paid',
-  },
-  {
-    id: '2',
-    invoiceNumber: 'INV-2024-002',
-    clientName: 'Jane Smith',
-    issueDate: '2024-11-05',
-    dueDate: '2024-11-19',
-    amount: '200.00',
-    status: 'issued',
-  },
-  {
-    id: '3',
-    invoiceNumber: 'INV-2024-003',
-    clientName: 'Bob Johnson',
-    issueDate: '2024-11-10',
-    dueDate: '2024-11-24',
-    amount: '175.00',
-    status: 'issued',
-  },
-  {
-    id: '4',
-    invoiceNumber: 'INV-2024-004',
-    clientName: 'Alice Williams',
-    issueDate: '2024-10-20',
-    dueDate: '2024-11-03',
-    amount: '150.00',
-    status: 'past_due',
-  },
-  {
-    id: '5',
-    invoiceNumber: 'INV-2024-005',
-    clientName: 'Charlie Brown',
-    issueDate: '2024-11-12',
-    dueDate: null,
-    amount: '225.00',
-    status: 'draft',
-  },
-];
-
 export default function InvoicesPage() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const { isClient } = useAuth();
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [processingPayment, setProcessingPayment] = useState<string | null>(null);
 
-  const filteredInvoices = mockInvoices.filter((invoice) =>
-    invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    invoice.clientName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const isClient = user?.role === 'client';
 
-  const totalAmount = filteredInvoices.reduce((sum, inv) => sum + parseFloat(inv.amount), 0);
+  useEffect(() => {
+    loadInvoices();
+  }, []);
+
+  const loadInvoices = async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient.getInvoices();
+      setInvoices(data);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load invoices.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePayInvoice = async (invoiceId: string) => {
+    setProcessingPayment(invoiceId);
+    try {
+      const { url } = await apiClient.createCheckoutSession(invoiceId);
+      // Redirect to Stripe Checkout
+      window.location.href = url;
+    } catch (error) {
+      toast({
+        title: 'Payment Error',
+        description: 'Failed to initiate payment. Please try again.',
+        variant: 'destructive',
+      });
+      setProcessingPayment(null);
+    }
+  };
+
+  const filteredInvoices = invoices.filter((invoice) => {
+    const clientName = invoice.client 
+      ? `${invoice.client.firstName} ${invoice.client.lastName}`
+      : '';
+    const matchesSearch = 
+      invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      clientName.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const totalAmount = filteredInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
   const paidAmount = filteredInvoices
     .filter(inv => inv.status === 'paid')
-    .reduce((sum, inv) => sum + parseFloat(inv.amount), 0);
+    .reduce((sum, inv) => sum + inv.totalAmount, 0);
   const pendingAmount = filteredInvoices
     .filter(inv => inv.status === 'issued' || inv.status === 'past_due')
-    .reduce((sum, inv) => sum + parseFloat(inv.amount), 0);
+    .reduce((sum, inv) => sum + inv.totalAmount, 0);
 
   return (
     <div className="space-y-6">
@@ -175,7 +181,19 @@ export default function InvoicesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInvoices.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
+                    {!isClient && <TableCell><Skeleton className="h-8 w-full" /></TableCell>}
+                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
+                  </TableRow>
+                ))
+              ) : filteredInvoices.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No invoices found
@@ -188,16 +206,21 @@ export default function InvoicesPage() {
                       {invoice.invoiceNumber}
                     </TableCell>
                     {!isClient && (
-                      <TableCell>{invoice.clientName}</TableCell>
+                      <TableCell>
+                        {invoice.client 
+                          ? `${invoice.client.firstName} ${invoice.client.lastName}`
+                          : 'N/A'
+                        }
+                      </TableCell>
                     )}
-                    <TableCell>{formatDate(invoice.issueDate)}</TableCell>
+                    <TableCell>{formatDate(invoice.createdAt)}</TableCell>
                     <TableCell>
                       {invoice.dueDate ? formatDate(invoice.dueDate) : (
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell className="font-mono font-semibold">
-                      {formatCurrency(invoice.amount)}
+                      {formatCurrency(invoice.totalAmount.toString())}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -222,8 +245,12 @@ export default function InvoicesPage() {
                             Download PDF
                           </DropdownMenuItem>
                           {isClient && invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
-                            <DropdownMenuItem>
-                              Pay Now
+                            <DropdownMenuItem 
+                              onClick={() => handlePayInvoice(invoice.id)}
+                              disabled={processingPayment === invoice.id}
+                            >
+                              <CreditCard className="mr-2 h-4 w-4" />
+                              {processingPayment === invoice.id ? 'Processing...' : 'Pay Now'}
                             </DropdownMenuItem>
                           )}
                           {!isClient && (

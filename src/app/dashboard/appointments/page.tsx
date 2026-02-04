@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/components/ui/use-toast';
 import {
   Table,
   TableBody,
@@ -24,60 +26,43 @@ import {
 import { Calendar, MoreVertical, Search, Plus } from 'lucide-react';
 import { formatDate, getStatusColor } from '@/lib/utils-format';
 import { useAuth } from '@/contexts/auth-context';
+import { apiClient } from '@/lib/api-client';
+import { Appointment } from '@/types';
 import Link from 'next/link';
 
-// Mock data
-const mockAppointments = [
-  {
-    id: '1',
-    clientName: 'John Doe',
-    date: new Date(2024, 11, 15, 10, 0).toISOString(),
-    duration: '60 minutes',
-    status: 'confirmed',
-    type: 'Initial Consultation',
-  },
-  {
-    id: '2',
-    clientName: 'Jane Smith',
-    date: new Date(2024, 11, 15, 14, 0).toISOString(),
-    duration: '60 minutes',
-    status: 'confirmed',
-    type: 'Follow-up Session',
-  },
-  {
-    id: '3',
-    clientName: 'Bob Johnson',
-    date: new Date(2024, 11, 16, 9, 0).toISOString(),
-    duration: '60 minutes',
-    status: 'tentative',
-    type: 'Initial Consultation',
-  },
-  {
-    id: '4',
-    clientName: 'Alice Williams',
-    date: new Date(2024, 11, 18, 13, 0).toISOString(),
-    duration: '90 minutes',
-    status: 'confirmed',
-    type: 'Assessment',
-  },
-  {
-    id: '5',
-    clientName: 'Charlie Brown',
-    date: new Date(2024, 11, 10, 11, 0).toISOString(),
-    duration: '60 minutes',
-    status: 'completed',
-    type: 'Follow-up Session',
-  },
-];
-
 export default function AppointmentsPage() {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const { isClient } = useAuth();
+  const { toast } = useToast();
 
-  const filteredAppointments = mockAppointments.filter((appointment) =>
-    appointment.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    appointment.type.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    loadAppointments();
+  }, []);
+
+  const loadAppointments = async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient.getAppointments();
+      setAppointments(data);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load appointments.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredAppointments = appointments.filter((appointment) => {
+    const clientName = appointment.client 
+      ? `${appointment.client.firstName} ${appointment.client.lastName}`
+      : '';
+    return clientName.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   return (
     <div className="space-y-6">
@@ -131,7 +116,18 @@ export default function AppointmentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAppointments.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {!isClient && <TableCell><Skeleton className="h-8 w-full" /></TableCell>}
+                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
+                  </TableRow>
+                ))
+              ) : filteredAppointments.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     No appointments found
@@ -142,21 +138,26 @@ export default function AppointmentsPage() {
                   <TableRow key={appointment.id}>
                     {!isClient && (
                       <TableCell className="font-medium">
-                        {appointment.clientName}
+                        {appointment.client 
+                          ? `${appointment.client.firstName} ${appointment.client.lastName}`
+                          : 'N/A'
+                        }
                       </TableCell>
                     )}
                     <TableCell>
                       <div>
                         <div className="font-medium">
-                          {formatDate(appointment.date, 'MMM dd, yyyy')}
+                          {formatDate(appointment.startTime, 'MMM dd, yyyy')}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {formatDate(appointment.date, 'h:mm a')}
+                          {formatDate(appointment.startTime, 'h:mm a')} - {formatDate(appointment.endTime, 'h:mm a')}
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{appointment.type}</TableCell>
-                    <TableCell>{appointment.duration}</TableCell>
+                    <TableCell>{appointment.service?.name || 'N/A'}</TableCell>
+                    <TableCell>
+                      {Math.round((new Date(appointment.endTime).getTime() - new Date(appointment.startTime).getTime()) / 60000)} min
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"

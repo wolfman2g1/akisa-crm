@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MonthCalendarView, WeekCalendarView } from '@/components/calendar/calendar-views';
+import { useToast } from '@/components/ui/use-toast';
 import { Calendar, Filter } from 'lucide-react';
 import {
   DropdownMenu,
@@ -13,51 +14,52 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-// Mock data for demonstration
-const mockEvents = [
-  {
-    id: '1',
-    title: 'John Doe',
-    start: new Date(2024, new Date().getMonth(), 15, 10, 0),
-    end: new Date(2024, new Date().getMonth(), 15, 11, 0),
-    status: 'confirmed' as const,
-  },
-  {
-    id: '2',
-    title: 'Jane Smith',
-    start: new Date(2024, new Date().getMonth(), 15, 14, 0),
-    end: new Date(2024, new Date().getMonth(), 15, 15, 0),
-    status: 'confirmed' as const,
-  },
-  {
-    id: '3',
-    title: 'Bob Johnson',
-    start: new Date(2024, new Date().getMonth(), 16, 9, 0),
-    end: new Date(2024, new Date().getMonth(), 16, 10, 0),
-    status: 'tentative' as const,
-  },
-  {
-    id: '4',
-    title: 'Alice Williams',
-    start: new Date(2024, new Date().getMonth(), 18, 13, 0),
-    end: new Date(2024, new Date().getMonth(), 18, 14, 0),
-    status: 'confirmed' as const,
-  },
-];
+import { apiClient } from '@/lib/api-client';
+import { Appointment } from '@/types';
 
 export default function CalendarPage() {
   const [view, setView] = useState<'month' | 'week'>('month');
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState({
     confirmed: true,
     tentative: true,
     cancelled: true,
     completed: true,
   });
+  const { toast } = useToast();
 
-  const filteredEvents = mockEvents.filter(
-    (event) => statusFilter[event.status]
-  );
+  useEffect(() => {
+    loadAppointments();
+  }, []);
+
+  const loadAppointments = async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient.getAppointments();
+      setAppointments(data);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load appointments.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const events = appointments
+    .filter((appointment) => statusFilter[appointment.status as keyof typeof statusFilter])
+    .map((appointment) => ({
+      id: appointment.id,
+      title: appointment.client 
+        ? `${appointment.client.firstName} ${appointment.client.lastName}`
+        : 'Appointment',
+      start: new Date(appointment.startTime),
+      end: new Date(appointment.endTime),
+      status: appointment.status as 'confirmed' | 'tentative' | 'cancelled' | 'completed',
+    }));
 
   const handleDateClick = (date: Date) => {
     console.log('Date clicked:', date);
@@ -142,7 +144,7 @@ export default function CalendarPage() {
 
         <TabsContent value="month" className="mt-6">
           <MonthCalendarView
-            events={filteredEvents}
+            events={events}
             onDateClick={handleDateClick}
             onEventClick={handleEventClick}
           />
@@ -150,7 +152,7 @@ export default function CalendarPage() {
 
         <TabsContent value="week" className="mt-6">
           <WeekCalendarView
-            events={filteredEvents}
+            events={events}
             onEventClick={handleEventClick}
           />
         </TabsContent>

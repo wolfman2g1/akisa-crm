@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/components/ui/use-toast';
 import {
   Table,
   TableBody,
@@ -23,59 +25,39 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Search, Plus, MoreVertical, Mail, Phone } from 'lucide-react';
 import { getInitials, formatPhoneNumber } from '@/lib/utils-format';
+import { apiClient } from '@/lib/api-client';
+import { Client } from '@/types';
 import Link from 'next/link';
 
-// Mock data
-const mockClients = [
-  {
-    id: '1',
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@example.com',
-    phone: '+15551234567',
-    company: 'Acme Corp',
-    lastAppointment: '2024-11-10',
-    totalAppointments: 5,
-  },
-  {
-    id: '2',
-    firstName: 'Jane',
-    lastName: 'Smith',
-    email: 'jane.smith@example.com',
-    phone: '+15559876543',
-    company: 'Tech Inc',
-    lastAppointment: '2024-11-12',
-    totalAppointments: 3,
-  },
-  {
-    id: '3',
-    firstName: 'Bob',
-    lastName: 'Johnson',
-    email: 'bob.j@example.com',
-    phone: '+15555551234',
-    company: null,
-    lastAppointment: '2024-11-08',
-    totalAppointments: 8,
-  },
-  {
-    id: '4',
-    firstName: 'Alice',
-    lastName: 'Williams',
-    email: 'alice.w@example.com',
-    phone: '+15554445555',
-    company: 'Design Co',
-    lastAppointment: '2024-11-14',
-    totalAppointments: 2,
-  },
-];
-
 export default function ClientsPage() {
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const { toast } = useToast();
 
-  const filteredClients = mockClients.filter((client) =>
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  const loadClients = async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient.getClients();
+      setClients(data);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load clients.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredClients = clients.filter((client) =>
     `${client.firstName} ${client.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.company?.toLowerCase().includes(searchQuery.toLowerCase())
+    client.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -116,10 +98,9 @@ export default function ClientsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Client</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Last Appointment</TableHead>
-                <TableHead>Total Visits</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Created</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -148,24 +129,24 @@ export default function ClientsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="h-3 w-3 text-muted-foreground" />
-                          {client.email}
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Phone className="h-3 w-3" />
-                          {formatPhoneNumber(client.phone)}
-                        </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="h-3 w-3 text-muted-foreground" />
+                        {client.email}
                       </div>
                     </TableCell>
                     <TableCell>
-                      {client.company || (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Phone className="h-3 w-3" />
+                        {client.phone ? formatPhoneNumber(client.phone) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {client.createdAt ? new Date(client.createdAt).toLocaleDateString() : (
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell>{client.lastAppointment}</TableCell>
-                    <TableCell>{client.totalAppointments}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

@@ -31,7 +31,7 @@ import { Invoice } from '@/types';
 import Link from 'next/link';
 
 export default function InvoicesPage() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,8 +42,10 @@ export default function InvoicesPage() {
   const isClient = user?.role === 'client';
 
   useEffect(() => {
-    loadInvoices();
-  }, []);
+    if (!authLoading && user) {
+      loadInvoices();
+    }
+  }, [authLoading, user]);
 
   const loadInvoices = async () => {
     try {

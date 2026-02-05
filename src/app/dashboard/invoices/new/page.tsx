@@ -28,7 +28,7 @@ interface LineItem {
 
 export default function NewInvoicePage() {
   const router = useRouter();
-  const { isClient } = useAuth();
+  const { isClient, user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   
   const [clients, setClients] = useState<Client[]>([]);
@@ -51,6 +51,8 @@ export default function NewInvoicePage() {
 
   // Load clients and services
   useEffect(() => {
+    if (authLoading || !user || isClient) return;
+    
     const fetchData = async () => {
       try {
         const [clientsData, servicesData] = await Promise.all([
@@ -71,7 +73,7 @@ export default function NewInvoicePage() {
       }
     };
     fetchData();
-  }, [toast]);
+  }, [authLoading, user, isClient, toast]);
 
   const addLineItem = () => {
     setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0 }]);

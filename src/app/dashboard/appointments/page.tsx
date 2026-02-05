@@ -34,12 +34,14 @@ export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const { isClient } = useAuth();
+  const { isClient, user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
-    loadAppointments();
-  }, []);
+    if (!authLoading && user) {
+      loadAppointments();
+    }
+  }, [authLoading, user]);
 
   const loadAppointments = async () => {
     try {

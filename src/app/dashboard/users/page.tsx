@@ -48,7 +48,7 @@ interface NewClientForm {
 
 export default function UsersPage() {
   const router = useRouter();
-  const { isAdmin, isProvider, isClient } = useAuth();
+  const { isAdmin, isProvider, isClient, user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   
   const [clients, setClients] = useState<Client[]>([]);
@@ -72,23 +72,25 @@ export default function UsersPage() {
 
   // Load clients
   useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const data = await apiClient.getClients();
-        setClients(data);
-      } catch (error) {
-        console.error('Failed to load clients:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load clients',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchClients();
-  }, [toast]);
+    if (!authLoading && user && !isClient) {
+      const fetchClients = async () => {
+        try {
+          const data = await apiClient.getClients();
+          setClients(data);
+        } catch (error) {
+          console.error('Failed to load clients:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to load clients',
+            variant: 'destructive',
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchClients();
+    }
+  }, [authLoading, user, isClient, toast]);
 
   const filteredClients = clients.filter((client) => {
     const searchLower = searchQuery.toLowerCase();

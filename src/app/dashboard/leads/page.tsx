@@ -42,8 +42,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Phone, Mail, Trash2, Edit2, Plus } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
 
 export default function LeadsPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,8 +71,10 @@ export default function LeadsPage() {
   });
 
   useEffect(() => {
-    loadLeads();
-  }, []);
+    if (!authLoading && user) {
+      loadLeads();
+    }
+  }, [authLoading, user]);
 
   const loadLeads = async () => {
     try {

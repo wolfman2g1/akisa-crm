@@ -18,7 +18,7 @@ import { format, addDays, startOfDay } from 'date-fns';
 
 export default function NewAppointmentPage() {
   const router = useRouter();
-  const { isAdmin, isProvider, isClient } = useAuth();
+  const { isAdmin, isProvider, isClient, user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   
   const [clients, setClients] = useState<Client[]>([]);
@@ -42,6 +42,8 @@ export default function NewAppointmentPage() {
 
   // Load clients and services
   useEffect(() => {
+    if (authLoading || !user || isClient) return;
+    
     const fetchData = async () => {
       try {
         const [clientsData, servicesData] = await Promise.all([
@@ -62,7 +64,7 @@ export default function NewAppointmentPage() {
       }
     };
     fetchData();
-  }, [toast]);
+  }, [authLoading, user, isClient, toast]);
 
   // Load available slots when date changes
   useEffect(() => {

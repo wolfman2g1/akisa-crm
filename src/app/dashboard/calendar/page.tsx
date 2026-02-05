@@ -16,8 +16,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { apiClient } from '@/lib/api-client';
 import { Appointment } from '@/types';
+import { useAuth } from '@/contexts/auth-context';
 
 export default function CalendarPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [view, setView] = useState<'month' | 'week'>('month');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,8 +32,10 @@ export default function CalendarPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadAppointments();
-  }, []);
+    if (!authLoading && user) {
+      loadAppointments();
+    }
+  }, [authLoading, user]);
 
   const loadAppointments = async () => {
     try {

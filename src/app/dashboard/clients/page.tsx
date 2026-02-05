@@ -39,6 +39,7 @@ import { apiClient } from '@/lib/api-client';
 import { Client } from '@/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/auth-context';
 
 interface NewClientForm {
   firstName: string;
@@ -48,6 +49,7 @@ interface NewClientForm {
 }
 
 export default function ClientsPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,8 +65,10 @@ export default function ClientsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    loadClients();
-  }, []);
+    if (!authLoading && user) {
+      loadClients();
+    }
+  }, [authLoading, user]);
 
   const loadClients = async () => {
     try {

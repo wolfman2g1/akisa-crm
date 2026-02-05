@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { apiClient } from '@/lib/api-client';
 import { format, addDays } from 'date-fns';
 import { Clock, Calendar as CalendarIcon, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
 
 interface TimeSlot {
   start: string;
@@ -16,6 +17,7 @@ interface TimeSlot {
 }
 
 export default function BookAppointmentPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
@@ -25,6 +27,8 @@ export default function BookAppointmentPage() {
   const { toast } = useToast();
 
   const handleDateSelect = async (date: Date | undefined) => {
+    if (authLoading || !user) return;
+    
     setSelectedDate(date);
     setSelectedSlot(null);
     setBookingSuccess(false);

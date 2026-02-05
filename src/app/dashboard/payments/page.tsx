@@ -10,16 +10,20 @@ import { apiClient } from '@/lib/api-client';
 import { Invoice } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils-format';
 import { DollarSign, Receipt, CreditCard, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
 
 export default function PaymentsPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    loadInvoices();
-  }, []);
+    if (!authLoading && user) {
+      loadInvoices();
+    }
+  }, [authLoading, user]);
 
   const loadInvoices = async () => {
     try {

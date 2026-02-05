@@ -18,6 +18,9 @@ import type {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
+// Endpoints that should not trigger token refresh on 401
+const NO_REFRESH_ENDPOINTS = new Set(['/auth/refresh', '/auth/signin', '/auth/signup']);
+
 class ApiClient {
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
@@ -118,7 +121,7 @@ class ApiClient {
     });
 
     // Handle unauthorized - try to refresh token
-    if (response.status === 401 && endpoint !== '/auth/refresh' && endpoint !== '/auth/signin') {
+    if (response.status === 401 && !NO_REFRESH_ENDPOINTS.has(endpoint)) {
       // If already refreshing, wait for it to complete
       if (this.isRefreshing && this.refreshPromise) {
         await this.refreshPromise;
@@ -140,15 +143,22 @@ class ApiClient {
           
           // Retry the original request with new token
           const newToken = this.getAccessToken();
+          const retryHeaders = { ...headers };
           if (newToken) {
-            headers['Authorization'] = `Bearer ${newToken}`;
+            retryHeaders['Authorization'] = `Bearer ${newToken}`;
+          }
+          
+          // Remove any Authorization header from options.headers to prevent conflicts
+          const optionsHeaders = { ...options.headers };
+          if (optionsHeaders && 'Authorization' in optionsHeaders) {
+            delete (optionsHeaders as Record<string, string>)['Authorization'];
           }
           
           response = await fetch(`${API_BASE_URL}${endpoint}`, {
             ...options,
             headers: {
-              ...headers,
-              ...options.headers,
+              ...retryHeaders,
+              ...optionsHeaders,
             },
           });
         } catch (error) {

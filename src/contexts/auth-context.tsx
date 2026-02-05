@@ -24,12 +24,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Verify and refresh auth on mount
   const verifyAuth = useCallback(async () => {
     const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('auth_token');
+    const accessToken = localStorage.getItem('accessToken');
+    const refreshToken = localStorage.getItem('refreshToken');
     
-    if (storedUser && token) {
+    if (storedUser && accessToken && refreshToken) {
       try {
-        // Set the token for API calls
-        apiClient.setToken(token);
+        // Set the tokens for API calls
+        apiClient.setTokens(accessToken, refreshToken);
         // Parse and set the user
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
@@ -37,8 +38,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Token is invalid, clear storage
         console.error('Auth verification failed:', error);
         localStorage.removeItem('user');
-        localStorage.removeItem('auth_token');
-        apiClient.clearToken();
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        apiClient.clearTokens();
       }
     }
     
@@ -68,20 +70,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       
       setUser(userData);
-      apiClient.setToken(response.token);
+      apiClient.setTokens(response.accessToken, response.refreshToken);
       localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('auth_token', response.token);
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await apiClient.logout();
     setUser(null);
-    apiClient.clearToken();
-    localStorage.removeItem('user');
-    localStorage.removeItem('auth_token');
   };
 
   const isAdmin = user?.role === 'admin';

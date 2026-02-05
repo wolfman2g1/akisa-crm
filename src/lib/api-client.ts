@@ -57,6 +57,7 @@ class ApiClient {
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
+      credentials: 'include', // Include cookies for better-auth
       headers: {
         ...headers,
         ...options.headers,

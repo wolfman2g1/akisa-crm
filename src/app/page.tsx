@@ -8,9 +8,9 @@ export default function Page() {
 
   useEffect(() => {
     // Check if user is logged in
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     
-    if (token) {
+    if (accessToken) {
       router.push('/dashboard');
     } else {
       router.push('/login');

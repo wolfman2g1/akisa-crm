@@ -100,8 +100,8 @@ export default function DashboardLayout({
     (item) => !item.roles || item.roles.includes(user.role)
   );
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push('/login');
   };
 

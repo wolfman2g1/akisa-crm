@@ -18,35 +18,92 @@ import type {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-class ApiClient {
-  private token: string | null = null;
+// Endpoints that should not trigger token refresh on 401
+const NO_REFRESH_ENDPOINTS = new Set(['/auth/refresh', '/auth/signin', '/auth/signup']);
 
-  setToken(token: string) {
-    this.token = token;
+class ApiClient {
+  private accessToken: string | null = null;
+  private refreshToken: string | null = null;
+  private isRefreshing = false;
+  private refreshPromise: Promise<void> | null = null;
+
+  setTokens(accessToken: string, refreshToken: string) {
+    this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
     if (typeof window !== 'undefined') {
-      localStorage.setItem('auth_token', token);
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+    }
+  }
+
+  getAccessToken(): string | null {
+    if (!this.accessToken && typeof window !== 'undefined') {
+      this.accessToken = localStorage.getItem('accessToken');
+    }
+    return this.accessToken;
+  }
+
+  getRefreshToken(): string | null {
+    if (!this.refreshToken && typeof window !== 'undefined') {
+      this.refreshToken = localStorage.getItem('refreshToken');
+    }
+    return this.refreshToken;
+  }
+
+  clearTokens() {
+    this.accessToken = null;
+    this.refreshToken = null;
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+    }
+  }
+
+  // For backward compatibility
+  setToken(token: string) {
+    this.accessToken = token;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('accessToken', token);
     }
   }
 
   getToken(): string | null {
-    if (!this.token && typeof window !== 'undefined') {
-      this.token = localStorage.getItem('auth_token');
-    }
-    return this.token;
+    return this.getAccessToken();
   }
 
   clearToken() {
-    this.token = null;
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
+    this.clearTokens();
+  }
+
+  private async refreshAccessToken(): Promise<void> {
+    const refreshToken = this.getRefreshToken();
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
     }
+
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!response.ok) {
+      this.clearTokens();
+      throw new Error('Failed to refresh token');
+    }
+
+    const data = await response.json();
+    this.setTokens(data.accessToken, data.refreshToken);
   }
 
   private async fetch<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const token = this.getToken();
+    const token = this.getAccessToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -55,23 +112,63 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    let response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
-      credentials: 'include', // Include cookies for better-auth
       headers: {
         ...headers,
         ...options.headers,
       },
     });
 
-    // Handle unauthorized - clear token but don't redirect automatically
-    // Let the auth context handle redirects to avoid race conditions
-    if (response.status === 401) {
-      this.clearToken();
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('user');
+    // Handle unauthorized - try to refresh token
+    if (response.status === 401 && !NO_REFRESH_ENDPOINTS.has(endpoint)) {
+      // If already refreshing, wait for it to complete
+      if (this.isRefreshing && this.refreshPromise) {
+        await this.refreshPromise;
+      } else if (!this.isRefreshing) {
+        // Start refreshing
+        this.isRefreshing = true;
+        this.refreshPromise = this.refreshAccessToken()
+          .catch((error) => {
+            this.clearTokens();
+            throw error;
+          })
+          .finally(() => {
+            this.isRefreshing = false;
+            this.refreshPromise = null;
+          });
+
+        try {
+          await this.refreshPromise;
+          
+          // Retry the original request with new token
+          const newToken = this.getAccessToken();
+          const retryHeaders = { ...headers };
+          if (newToken) {
+            retryHeaders['Authorization'] = `Bearer ${newToken}`;
+          }
+          
+          // Remove any Authorization header from options.headers to prevent conflicts
+          const optionsHeaders = { ...options.headers };
+          if (optionsHeaders && 'Authorization' in optionsHeaders) {
+            delete (optionsHeaders as Record<string, string>)['Authorization'];
+          }
+          
+          response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...options,
+            headers: {
+              ...retryHeaders,
+              ...optionsHeaders,
+            },
+          });
+        } catch (error) {
+          // Refresh failed, clear tokens and throw
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('user');
+          }
+          throw new Error('Session expired. Please log in again.');
+        }
       }
-      throw new Error('Session expired. Please log in again.');
     }
 
     if (!response.ok) {
@@ -94,6 +191,19 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await this.fetch<void>('/auth/signout', {
+        method: 'POST',
+      });
+    } catch (error) {
+      // Even if logout fails on server, clear local tokens
+      console.error('Logout error:', error);
+    } finally {
+      this.clearTokens();
+    }
   }
 
   // Lead endpoints

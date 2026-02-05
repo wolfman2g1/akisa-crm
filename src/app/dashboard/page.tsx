@@ -155,15 +155,21 @@ export default function DashboardPage() {
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link href="/dashboard/clients/new">
+                  <Link href="/dashboard/users">
                     <Users className="mr-2 h-4 w-4" />
-                    Add New Client
+                    Manage Users
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link href="/dashboard/invoices/new">
+                  <Link href="/dashboard/invoices">
                     <FileText className="mr-2 h-4 w-4" />
-                    Generate Invoice
+                    View Invoices
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link href="/dashboard/calendar">
+                    <Clock className="mr-2 h-4 w-4" />
+                    View Calendar
                   </Link>
                 </Button>
               </>

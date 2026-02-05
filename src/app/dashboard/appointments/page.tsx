@@ -147,16 +147,16 @@ export default function AppointmentsPage() {
                     <TableCell>
                       <div>
                         <div className="font-medium">
-                          {formatDate(appointment.startTime, 'MMM dd, yyyy')}
+                          {formatDate(appointment.startAt || appointment.startTime || '', 'MMM dd, yyyy')}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {formatDate(appointment.startTime, 'h:mm a')} - {formatDate(appointment.endTime, 'h:mm a')}
+                          {formatDate(appointment.startAt || appointment.startTime || '', 'h:mm a')} - {formatDate(appointment.endAt || appointment.endTime || '', 'h:mm a')}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>{appointment.service?.name || 'N/A'}</TableCell>
                     <TableCell>
-                      {Math.round((new Date(appointment.endTime).getTime() - new Date(appointment.startTime).getTime()) / 60000)} min
+                      {Math.round((new Date(appointment.endAt || appointment.endTime || '').getTime() - new Date(appointment.startAt || appointment.startTime || '').getTime()) / 60000)} min
                     </TableCell>
                     <TableCell>
                       <Badge

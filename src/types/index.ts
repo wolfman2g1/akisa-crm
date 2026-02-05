@@ -81,9 +81,16 @@ export interface Appointment {
   id: string;
   clientId?: string | null;
   leadId?: string | null;
+  serviceId?: string | null;
   startAt: string;
   endAt: string;
+  startTime?: string;
+  endTime?: string;
   status: AppointmentStatus;
+  notes?: string | null;
+  client?: Client | null;
+  lead?: Lead | null;
+  service?: Service | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -91,22 +98,29 @@ export interface Appointment {
 export interface CreateAppointmentDTO {
   clientId?: string;
   leadId?: string;
+  serviceId?: string;
   startAt: string;
   endAt: string;
+  notes?: string;
+  status?: AppointmentStatus;
 }
 
 export interface AvailableSlot {
-  start: string;
-  end: string;
-  available: boolean;
+  startTime: string;
+  endTime: string;
+  start?: string;
+  end?: string;
+  available?: boolean;
 }
 
 // Service Types
 export interface Service {
   id: string;
-  service: string;
+  name: string;
+  service?: string;
   description?: string | null;
-  price?: string | null;
+  durationMinutes: number;
+  price: number | string;
   priceId?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -155,10 +169,12 @@ export interface CreateInvoiceDTO {
   issueDate?: string;
   dueDate?: string | null;
   currency?: string;
+  notes?: string;
   lineItems: {
-    serviceId: string;
-    description?: string | null;
-    quantity?: number;
+    serviceId?: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
   }[];
   tax?: string | number | null;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, UserRole } from '@/types';
 import { apiClient } from '@/lib/api-client';
 
@@ -9,6 +9,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshAuth: () => Promise<void>;
   isAdmin: boolean;
   isProvider: boolean;
   isClient: boolean;
@@ -20,26 +21,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Check if user is already logged in
+  // Verify and refresh auth on mount
+  const verifyAuth = useCallback(async () => {
     const storedUser = localStorage.getItem('user');
     const token = localStorage.getItem('auth_token');
     
     if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
-      apiClient.setToken(token);
+      try {
+        // Set the token for API calls
+        apiClient.setToken(token);
+        // Parse and set the user
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+      } catch (error) {
+        // Token is invalid, clear storage
+        console.error('Auth verification failed:', error);
+        localStorage.removeItem('user');
+        localStorage.removeItem('auth_token');
+        apiClient.clearToken();
+      }
     }
     
     setIsLoading(false);
   }, []);
 
+  useEffect(() => {
+    verifyAuth();
+  }, [verifyAuth]);
+
+  // Refresh auth function that can be called manually
+  const refreshAuth = useCallback(async () => {
+    await verifyAuth();
+  }, [verifyAuth]);
+
   const login = async (email: string, password: string) => {
     try {
       const response = await apiClient.login(email, password);
       
-      setUser(response.user);
+      // Map API response to User interface (handle both snake_case and camelCase)
+      const userData: User = {
+        id: response.user.id,
+        email: response.user.email,
+        role: response.user.role,
+        firstName: response.user.firstName || (response.user as any).first_name,
+        lastName: response.user.lastName || (response.user as any).last_name,
+      };
+      
+      setUser(userData);
       apiClient.setToken(response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('auth_token', response.token);
     } catch (error) {
       console.error('Login failed:', error);
@@ -65,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         login,
         logout,
+        refreshAuth,
         isAdmin,
         isProvider,
         isClient,

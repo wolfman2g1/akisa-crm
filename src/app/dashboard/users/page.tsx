@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { useAuth } from '@/contexts/auth-context';
+import { apiClient } from '@/lib/api-client';
+import { Client } from '@/types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/components/ui/use-toast';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -17,14 +18,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -33,12 +26,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Search, Plus, MoreVertical, Mail, Phone, Loader2 } from 'lucide-react';
-import { getInitials, formatPhoneNumber } from '@/lib/utils-format';
-import { apiClient } from '@/lib/api-client';
-import { Client } from '@/types';
-import Link from 'next/link';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useToast } from '@/components/ui/use-toast';
+import { Search, UserPlus, MoreHorizontal, Mail, Phone, User, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { formatDistanceToNow } from 'date-fns';
 
 interface NewClientForm {
   firstName: string;
@@ -47,45 +46,59 @@ interface NewClientForm {
   phone: string;
 }
 
-export default function ClientsPage() {
+export default function UsersPage() {
+  const router = useRouter();
+  const { isAdmin, isProvider, isClient } = useAuth();
+  const { toast } = useToast();
+  
   const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAddingClient, setIsAddingClient] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newClientForm, setNewClientForm] = useState<NewClientForm>({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
   });
-  const { toast } = useToast();
-  const router = useRouter();
 
+  // Redirect clients away from admin-only page
   useEffect(() => {
-    loadClients();
-  }, []);
-
-  const loadClients = async () => {
-    try {
-      setLoading(true);
-      const data = await apiClient.getClients();
-      setClients(data);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load clients.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
+    if (isClient) {
+      router.push('/dashboard');
     }
-  };
+  }, [isClient, router]);
 
-  const filteredClients = clients.filter((client) =>
-    `${client.firstName} ${client.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Load clients
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const data = await apiClient.getClients();
+        setClients(data);
+      } catch (error) {
+        console.error('Failed to load clients:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load clients',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchClients();
+  }, [toast]);
+
+  const filteredClients = clients.filter((client) => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      client.firstName?.toLowerCase().includes(searchLower) ||
+      client.lastName?.toLowerCase().includes(searchLower) ||
+      client.email?.toLowerCase().includes(searchLower) ||
+      client.phone?.toLowerCase().includes(searchLower)
+    );
+  });
 
   const handleAddClient = async () => {
     if (!newClientForm.firstName || !newClientForm.lastName || !newClientForm.email) {
@@ -141,21 +154,23 @@ export default function ClientsPage() {
     }
   };
 
+  if (isClient) {
+    return null;
+  }
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Clients</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your client list and information
+          <h1 className="text-3xl font-bold">User Management</h1>
+          <p className="text-muted-foreground">
+            Manage client accounts and view their information
           </p>
         </div>
-
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="mr-2 h-4 w-4" />
+              <UserPlus className="mr-2 h-4 w-4" />
               Add Client
             </Button>
           </DialogTrigger>
@@ -229,92 +244,123 @@ export default function ClientsPage() {
         </Dialog>
       </div>
 
-      {/* Search */}
+      {/* Search and Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search clients..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Badge variant="secondary">
+              {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Clients Table */}
       <Card>
         <CardHeader>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search clients..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+          <CardTitle>Clients</CardTitle>
+          <CardDescription>
+            A list of all registered clients and their contact information
+          </CardDescription>
         </CardHeader>
-
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Client</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredClients.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredClients.length === 0 ? (
+            <div className="text-center py-12">
+              <User className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-4 text-lg font-semibold">No clients found</h3>
+              <p className="text-muted-foreground">
+                {searchQuery ? 'Try adjusting your search' : 'Add your first client to get started'}
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No clients found
-                  </TableCell>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : (
-                filteredClients.map((client) => (
+              </TableHeader>
+              <TableBody>
+                {filteredClients.map((client) => (
                   <TableRow key={client.id}>
-                    <TableCell>
+                    <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarFallback>
-                            {getInitials(client.firstName, client.lastName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">
-                            {client.firstName} {client.lastName}
-                          </div>
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="h-4 w-4 text-primary" />
                         </div>
+                        <span>
+                          {client.firstName} {client.lastName}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="h-3 w-3 text-muted-foreground" />
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
                         {client.email}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="h-3 w-3" />
-                        {client.phone ? formatPhoneNumber(client.phone) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {client.createdAt ? new Date(client.createdAt).toLocaleDateString() : (
+                      {client.phone ? (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          {client.phone}
+                        </div>
+                      ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell>
+                      {client.createdAt ? (
+                        <span className="text-muted-foreground">
+                          {formatDistanceToNow(new Date(client.createdAt), { addSuffix: true })}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => router.push(`/dashboard/appointments/new?client=${client.id}`)}>
-                            Schedule Appointment
+                          <DropdownMenuItem
+                            onClick={() => router.push(`/dashboard/clients?id=${client.id}`)}
+                          >
+                            View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => router.push(`/dashboard/invoices?client=${client.id}`)}>
+                          <DropdownMenuItem
+                            onClick={() => router.push(`/dashboard/appointments/new?client=${client.id}`)}
+                          >
+                            Create Appointment
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => router.push(`/dashboard/invoices?client=${client.id}`)}
+                          >
                             View Invoices
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="text-destructive"
                             onClick={() => handleDeleteClient(client.id)}
                           >
@@ -324,38 +370,12 @@ export default function ClientsPage() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
-
-      {/* Statistics */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <p className="text-sm text-muted-foreground">Total Clients</p>
-            <p className="text-3xl font-bold">{clients.length}</p>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <p className="text-sm text-muted-foreground">Active This Month</p>
-            <p className="text-3xl font-bold">
-              {clients.filter(c => c.createdAt && new Date(c.createdAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length}
-            </p>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <p className="text-sm text-muted-foreground">New This Month</p>
-            <p className="text-3xl font-bold">
-              {clients.filter(c => c.createdAt && new Date(c.createdAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length}
-            </p>
-          </CardHeader>
-        </Card>
-      </div>
     </div>
   );
 }

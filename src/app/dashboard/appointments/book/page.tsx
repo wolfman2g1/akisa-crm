@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { apiClient } from '@/lib/api-client';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { Clock, Calendar as CalendarIcon, CheckCircle2 } from 'lucide-react';
 
 interface TimeSlot {
@@ -36,9 +36,15 @@ export default function BookAppointmentPage() {
 
     setLoading(true);
     try {
-      const dateStr = format(date, 'yyyy-MM-dd');
-      const slots = await apiClient.getAvailableSlots(dateStr);
-      setAvailableSlots(slots);
+      const startDate = format(date, 'yyyy-MM-dd');
+      const endDate = format(addDays(date, 1), 'yyyy-MM-dd');
+      const slots = await apiClient.getAvailableSlots(startDate, endDate);
+      // Map API response to our TimeSlot interface
+      const mappedSlots = slots.map(slot => ({
+        start: slot.startTime || slot.start || '',
+        end: slot.endTime || slot.end || '',
+      }));
+      setAvailableSlots(mappedSlots);
       
       if (slots.length === 0) {
         toast({
@@ -69,8 +75,8 @@ export default function BookAppointmentPage() {
     setBooking(true);
     try {
       await apiClient.createAppointment({
-        startTime: selectedSlot.start,
-        endTime: selectedSlot.end,
+        startAt: selectedSlot.start,
+        endAt: selectedSlot.end,
         status: 'confirmed',
       });
 

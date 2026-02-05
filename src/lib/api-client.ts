@@ -63,6 +63,16 @@ class ApiClient {
       },
     });
 
+    // Handle unauthorized - clear token and redirect to login
+    if (response.status === 401) {
+      this.clearToken();
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+      throw new Error('Session expired. Please log in again.');
+    }
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({
         message: 'An error occurred',

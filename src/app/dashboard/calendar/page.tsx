@@ -56,8 +56,8 @@ export default function CalendarPage() {
       title: appointment.client 
         ? `${appointment.client.firstName} ${appointment.client.lastName}`
         : 'Appointment',
-      start: new Date(appointment.startTime),
-      end: new Date(appointment.endTime),
+      start: new Date(appointment.startAt || appointment.startTime || ''),
+      end: new Date(appointment.endAt || appointment.endTime || ''),
       status: appointment.status as 'confirmed' | 'tentative' | 'cancelled' | 'completed',
     }));
 

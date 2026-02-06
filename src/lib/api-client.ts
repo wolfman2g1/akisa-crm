@@ -17,12 +17,16 @@ import type {
   ContactPreference,
   InvoiceEmailDTO,
   InvoiceEmailResponse,
+  SignUpDTO,
+  RequestPasswordResetDTO,
+  SetPasswordDTO,
+  MessageResponse,
 } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 // Endpoints that should not trigger token refresh on 401
-const NO_REFRESH_ENDPOINTS = new Set(['/auth/refresh', '/auth/signin', '/auth/signup']);
+const NO_REFRESH_ENDPOINTS = new Set(['/auth/refresh', '/auth/signin', '/auth/signup', '/auth/request-password-reset', '/auth/set-password']);
 
 class ApiClient {
   private accessToken: string | null = null;
@@ -235,7 +239,8 @@ class ApiClient {
 
   // Auth endpoints
   async login(username: string, password: string): Promise<AuthResponse> {
-    return this.fetch<AuthResponse>('/auth/login', {
+    // Backend expects /auth/signin (not /auth/login)
+    return this.fetch<AuthResponse>('/auth/signin', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
@@ -252,6 +257,27 @@ class ApiClient {
     } finally {
       this.clearTokens();
     }
+  }
+
+  async signUp(data: SignUpDTO): Promise<AuthResponse> {
+    return this.fetch<AuthResponse>('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async requestPasswordReset(data: RequestPasswordResetDTO): Promise<MessageResponse> {
+    return this.fetch<MessageResponse>('/auth/request-password-reset', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async setPassword(data: SetPasswordDTO): Promise<MessageResponse> {
+    return this.fetch<MessageResponse>('/auth/set-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   // Lead endpoints

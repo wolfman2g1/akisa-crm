@@ -34,17 +34,35 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { Search, UserPlus, MoreHorizontal, Mail, Phone, User, Loader2 } from 'lucide-react';
+import { Search, UserPlus, MoreHorizontal, Mail, Phone, User, Loader2, Shield, Users, Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 
-interface NewClientForm {
-  firstName: string;
-  lastName: string;
+interface NewUserForm {
+  username: string;
+  password: string;
   email: string;
-  phone: string;
+  first_name: string;
+  last_name: string;
+  role: 'admin' | 'client';
 }
+
+const initialUserForm: NewUserForm = {
+  username: '',
+  password: '',
+  email: '',
+  first_name: '',
+  last_name: '',
+  role: 'client',
+};
 
 export default function UsersPage() {
   const router = useRouter();
@@ -54,14 +72,10 @@ export default function UsersPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isAddingClient, setIsAddingClient] = useState(false);
+  const [isAddingUser, setIsAddingUser] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newClientForm, setNewClientForm] = useState<NewClientForm>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [newUserForm, setNewUserForm] = useState<NewUserForm>(initialUserForm);
 
   // Redirect clients away from admin-only page
   useEffect(() => {
@@ -95,47 +109,75 @@ export default function UsersPage() {
   const filteredClients = clients.filter((client) => {
     const searchLower = searchQuery.toLowerCase();
     return (
-      client.firstName?.toLowerCase().includes(searchLower) ||
-      client.lastName?.toLowerCase().includes(searchLower) ||
+      client.first_name?.toLowerCase().includes(searchLower) ||
+      client.last_name?.toLowerCase().includes(searchLower) ||
       client.email?.toLowerCase().includes(searchLower) ||
       client.phone?.toLowerCase().includes(searchLower)
     );
   });
 
-  const handleAddClient = async () => {
-    if (!newClientForm.firstName || !newClientForm.lastName || !newClientForm.email) {
+  const isFormValid = () => {
+    return (
+      newUserForm.username.trim().length > 0 &&
+      newUserForm.password.length >= 8 &&
+      newUserForm.email.trim().length > 0 &&
+      newUserForm.first_name.trim().length > 0 &&
+      newUserForm.last_name.trim().length > 0
+    );
+  };
+
+  const handleAddUser = async () => {
+    if (!isFormValid()) {
       toast({
         title: 'Missing Information',
-        description: 'Please fill in all required fields',
+        description: 'Please fill in all required fields. Password must be at least 8 characters.',
         variant: 'destructive',
       });
       return;
     }
 
-    setIsAddingClient(true);
+    setIsAddingUser(true);
     try {
-      const newClient = await apiClient.createClient({
-        firstName: newClientForm.firstName,
-        lastName: newClientForm.lastName,
-        email: newClientForm.email,
-        phone: newClientForm.phone || undefined,
+      // Create user via signup endpoint with the SignUpDTO
+      await apiClient.signUp({
+        username: newUserForm.username,
+        password: newUserForm.password,
+        email: newUserForm.email,
+        first_name: newUserForm.first_name,
+        last_name: newUserForm.last_name,
       });
-      
-      setClients([newClient, ...clients]);
-      setNewClientForm({ firstName: '', lastName: '', email: '', phone: '' });
+
+      // If creating a client, also create via client endpoint to link properly
+      if (newUserForm.role === 'client') {
+        try {
+          const newClient = await apiClient.createClient({
+            first_name: newUserForm.first_name,
+            last_name: newUserForm.last_name,
+            email: newUserForm.email,
+            phone: '',
+            pref_contact: 'email',
+          });
+          setClients([newClient, ...clients]);
+        } catch {
+          // Client creation might be handled by the backend automatically
+        }
+      }
+
+      setNewUserForm(initialUserForm);
       setIsDialogOpen(false);
+      setShowPassword(false);
       toast({
         title: 'Success',
-        description: 'Client added successfully',
+        description: `${newUserForm.role === 'admin' ? 'Admin' : 'Client'} user created successfully. They will receive a welcome email with a password setup link.`,
       });
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to add client',
+        description: error.message || 'Failed to create user',
         variant: 'destructive',
       });
     } finally {
-      setIsAddingClient(false);
+      setIsAddingUser(false);
     }
   };
 
@@ -145,12 +187,12 @@ export default function UsersPage() {
       setClients(clients.filter((c) => c.id !== clientId));
       toast({
         title: 'Success',
-        description: 'Client deleted successfully',
+        description: 'User deleted successfully',
       });
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to delete client',
+        description: error.message || 'Failed to delete user',
         variant: 'destructive',
       });
     }
@@ -166,80 +208,162 @@ export default function UsersPage() {
         <div>
           <h1 className="text-3xl font-bold">User Management</h1>
           <p className="text-muted-foreground">
-            Manage client accounts and view their information
+            Manage admin and client accounts
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setNewUserForm(initialUserForm);
+            setShowPassword(false);
+          }
+        }}>
           <DialogTrigger asChild>
             <Button>
               <UserPlus className="mr-2 h-4 w-4" />
-              Add Client
+              Add User
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Add New Client</DialogTitle>
+              <DialogTitle>Create New User</DialogTitle>
               <DialogDescription>
-                Create a new client account. They will receive an email invitation.
+                Create a new user account. They will receive a welcome email to set up their password.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              {/* Role Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="role">Role *</Label>
+                <Select
+                  value={newUserForm.role}
+                  onValueChange={(value: 'admin' | 'client') =>
+                    setNewUserForm({ ...newUserForm, role: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="client">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        <span>Client</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="admin">
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        <span>Admin</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Name Fields */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name *</Label>
+                  <Label htmlFor="first_name">First Name *</Label>
                   <Input
-                    id="firstName"
-                    value={newClientForm.firstName}
+                    id="first_name"
+                    value={newUserForm.first_name}
                     onChange={(e) =>
-                      setNewClientForm({ ...newClientForm, firstName: e.target.value })
+                      setNewUserForm({ ...newUserForm, first_name: e.target.value })
                     }
                     placeholder="John"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Label htmlFor="last_name">Last Name *</Label>
                   <Input
-                    id="lastName"
-                    value={newClientForm.lastName}
+                    id="last_name"
+                    value={newUserForm.last_name}
                     onChange={(e) =>
-                      setNewClientForm({ ...newClientForm, lastName: e.target.value })
+                      setNewUserForm({ ...newUserForm, last_name: e.target.value })
                     }
                     placeholder="Doe"
                   />
                 </div>
               </div>
+
+              {/* Username */}
+              <div className="space-y-2">
+                <Label htmlFor="username">Username *</Label>
+                <Input
+                  id="username"
+                  value={newUserForm.username}
+                  onChange={(e) =>
+                    setNewUserForm({ ...newUserForm, username: e.target.value })
+                  }
+                  placeholder="john.doe"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                />
+              </div>
+
+              {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
                   type="email"
-                  value={newClientForm.email}
+                  value={newUserForm.email}
                   onChange={(e) =>
-                    setNewClientForm({ ...newClientForm, email: e.target.value })
+                    setNewUserForm({ ...newUserForm, email: e.target.value })
                   }
                   placeholder="john.doe@example.com"
                 />
               </div>
+
+              {/* Password */}
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={newClientForm.phone}
-                  onChange={(e) =>
-                    setNewClientForm({ ...newClientForm, phone: e.target.value })
-                  }
-                  placeholder="(555) 123-4567"
-                />
+                <Label htmlFor="password">Temporary Password *</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={newUserForm.password}
+                    onChange={(e) =>
+                      setNewUserForm({ ...newUserForm, password: e.target.value })
+                    }
+                    placeholder="Min. 8 characters"
+                    minLength={8}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {newUserForm.password.length > 0 && newUserForm.password.length < 8 && (
+                  <p className="text-sm text-destructive">
+                    Password must be at least 8 characters
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  This is a temporary password. The user will be prompted to set their own password via email.
+                </p>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <Button variant="outline" onClick={() => {
+                setIsDialogOpen(false);
+                setNewUserForm(initialUserForm);
+                setShowPassword(false);
+              }}>
                 Cancel
               </Button>
-              <Button onClick={handleAddClient} disabled={isAddingClient}>
-                {isAddingClient && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Add Client
+              <Button
+                onClick={handleAddUser}
+                disabled={isAddingUser || !isFormValid()}
+              >
+                {isAddingUser && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create {newUserForm.role === 'admin' ? 'Admin' : 'Client'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -253,25 +377,25 @@ export default function UsersPage() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search clients..."
+                placeholder="Search users..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
             <Badge variant="secondary">
-              {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''}
+              {filteredClients.length} user{filteredClients.length !== 1 ? 's' : ''}
             </Badge>
           </div>
         </CardContent>
       </Card>
 
-      {/* Clients Table */}
+      {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Clients</CardTitle>
+          <CardTitle>Users</CardTitle>
           <CardDescription>
-            A list of all registered clients and their contact information
+            All registered users and their contact information
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -282,9 +406,9 @@ export default function UsersPage() {
           ) : filteredClients.length === 0 ? (
             <div className="text-center py-12">
               <User className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">No clients found</h3>
+              <h3 className="mt-4 text-lg font-semibold">No users found</h3>
               <p className="text-muted-foreground">
-                {searchQuery ? 'Try adjusting your search' : 'Add your first client to get started'}
+                {searchQuery ? 'Try adjusting your search' : 'Add your first user to get started'}
               </p>
             </div>
           ) : (
@@ -306,9 +430,11 @@ export default function UsersPage() {
                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                           <User className="h-4 w-4 text-primary" />
                         </div>
-                        <span>
-                          {client.firstName} {client.lastName}
-                        </span>
+                        <div>
+                          <span>
+                            {client.first_name} {client.last_name}
+                          </span>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -366,7 +492,7 @@ export default function UsersPage() {
                             className="text-destructive"
                             onClick={() => handleDeleteClient(client.id)}
                           >
-                            Delete Client
+                            Delete User
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

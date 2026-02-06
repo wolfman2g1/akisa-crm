@@ -74,6 +74,12 @@ const navigation: NavItem[] = [
     icon: CreditCard,
     roles: ['client'],
   },
+  {
+    href: '/dashboard/users',
+    label: 'Users',
+    icon: Users,
+    roles: ['admin', 'provider'],
+  },
 ];
 
 export default function DashboardLayout({

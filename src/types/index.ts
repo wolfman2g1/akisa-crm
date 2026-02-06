@@ -243,6 +243,8 @@ export interface User {
   role: UserRole;
   firstName?: string;
   lastName?: string;
+  username?: string;
+  reset?: boolean;
 }
 
 export interface AuthResponse {
@@ -258,4 +260,27 @@ export interface AuthResponse {
     refreshToken?: string;
     token?: string;
   };
+}
+
+// Sign Up DTO (matches backend validation)
+export interface SignUpDTO {
+  username: string;
+  password: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+}
+
+// Password Reset / Set types
+export interface RequestPasswordResetDTO {
+  email: string;
+}
+
+export interface SetPasswordDTO {
+  token: string;
+  newPassword: string;
+}
+
+export interface MessageResponse {
+  message: string;
 }

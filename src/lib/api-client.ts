@@ -85,12 +85,29 @@ class ApiClient {
       throw new Error('No refresh token available');
     }
 
+    const userId =
+      typeof window !== 'undefined'
+        ? ((): string | undefined => {
+            try {
+              const storedUser = localStorage.getItem('user');
+              if (!storedUser) return undefined;
+              const parsed = JSON.parse(storedUser) as { id?: string };
+              return parsed?.id;
+            } catch {
+              return undefined;
+            }
+          })()
+        : undefined;
+
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ refresh_token: refreshToken }),
+      body: JSON.stringify({
+        refresh_token: refreshToken,
+        ...(userId ? { userId } : {}),
+      }),
     });
 
     if (!response.ok) {

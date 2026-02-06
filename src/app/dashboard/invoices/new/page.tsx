@@ -20,7 +20,8 @@ import { format, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface LineItem {
-  description: string;
+  service: string;
+  description: string | null;
   quantity: number;
   unitPrice: number;
   serviceId?: string;
@@ -36,7 +37,7 @@ export default function NewInvoicePage() {
   const [selectedClient, setSelectedClient] = useState<string>('');
   const [dueDate, setDueDate] = useState<Date>(addDays(new Date(), 30));
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { description: '', quantity: 1, unitPrice: 0 },
+    { service: '', description: null, quantity: 1, unitPrice: 0 },
   ]);
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -76,7 +77,7 @@ export default function NewInvoicePage() {
   }, [authLoading, user, isClient, toast]);
 
   const addLineItem = () => {
-    setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0 }]);
+    setLineItems([...lineItems, { service: '', description: null, quantity: 1, unitPrice: 0, serviceId: '' }]);
   };
 
   const removeLineItem = (index: number) => {
@@ -98,7 +99,8 @@ export default function NewInvoicePage() {
       updated[index] = {
         ...updated[index],
         serviceId,
-        description: service.name,
+        service: service.service || service.name,
+        description: service.description || null,
         unitPrice: typeof service.price === 'number' ? service.price : parseFloat(String(service.price)) || 0,
       };
       setLineItems(updated);
@@ -119,11 +121,11 @@ export default function NewInvoicePage() {
       return;
     }
 
-    const validLineItems = lineItems.filter((item) => item.description && item.unitPrice > 0);
+    const validLineItems = lineItems.filter((item) => item.serviceId && item.unitPrice > 0);
     if (validLineItems.length === 0) {
       toast({
         title: 'Missing Information',
-        description: 'Please add at least one line item',
+        description: 'Please select at least one service',
         variant: 'destructive',
       });
       return;
@@ -135,6 +137,7 @@ export default function NewInvoicePage() {
         clientId: selectedClient,
         dueDate: format(dueDate, 'yyyy-MM-dd'),
         lineItems: validLineItems.map((item) => ({
+          service: item.service,
           description: item.description,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
@@ -215,26 +218,30 @@ export default function NewInvoicePage() {
               {lineItems.map((item, index) => (
                 <div key={index} className="flex gap-4 items-start">
                   <div className="flex-1 space-y-2">
-                    <Label>Service / Description</Label>
+                    <Label>Service *</Label>
                     <Select
                       value={item.serviceId || ''}
                       onValueChange={(value) => handleServiceSelect(index, value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a service or add custom" />
+                        <SelectValue placeholder="Select a service" />
                       </SelectTrigger>
                       <SelectContent>
                         {services.map((service) => (
                           <SelectItem key={service.id} value={service.id}>
-                            {service.name} - ${typeof service.price === 'number' ? service.price : service.price}
+                            {service.service || service.name} - ${typeof service.price === 'number' ? service.price.toFixed(2) : service.price}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <Input
-                      placeholder="Or enter custom description"
-                      value={item.description}
-                      onChange={(e) => updateLineItem(index, 'description', e.target.value)}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <Label>Description</Label>
+                    <Textarea
+                      placeholder="Optional description"
+                      value={item.description || ''}
+                      onChange={(e) => updateLineItem(index, 'description', e.target.value || null)}
+                      rows={2}
                     />
                   </div>
                   <div className="w-24 space-y-2">

@@ -88,7 +88,7 @@ class ApiClient {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ refreshToken }),
+      body: JSON.stringify({ refresh_token: refreshToken }),
     });
 
     if (!response.ok) {
@@ -97,17 +97,41 @@ class ApiClient {
     }
 
     const data = await response.json();
-    this.setTokens(data.accessToken, data.refreshToken);
+    const accessToken =
+      data.accessToken ||
+      data.access_token ||
+      data.token ||
+      data.data?.accessToken ||
+      data.data?.access_token ||
+      data.data?.token;
+    const newRefreshToken =
+      data.refreshToken || data.refresh_token || data.data?.refreshToken || data.data?.refresh_token;
+
+    if (!accessToken) {
+      this.clearTokens();
+      throw new Error('Refresh response missing access token');
+    }
+
+    this.setTokens(accessToken, newRefreshToken || refreshToken);
   }
 
   private async fetch<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const token = this.getAccessToken();
+    let token = this.getAccessToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
+
+    if (!token && this.getRefreshToken() && !NO_REFRESH_ENDPOINTS.has(endpoint)) {
+      try {
+        await this.refreshAccessToken();
+        token = this.getAccessToken();
+      } catch {
+        token = null;
+      }
+    }
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;

@@ -215,12 +215,24 @@ class ApiClient {
             },
           });
         } catch (error) {
-          // Refresh failed, clear tokens and throw
+          // Refresh failed, clear tokens, redirect to login, and throw
           if (typeof window !== 'undefined') {
             localStorage.removeItem('user');
+            window.location.href = '/login';
           }
           throw new Error('Session expired. Please log in again.');
         }
+      }
+    }
+
+    if (
+      response.status === 401 &&
+      !NO_REFRESH_ENDPOINTS.has(endpoint) &&
+      !this.getRefreshToken()
+    ) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('user');
+        window.location.href = '/login';
       }
     }
 

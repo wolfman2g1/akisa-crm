@@ -200,7 +200,7 @@ export default function NewInvoicePage() {
                 <SelectContent>
                   {clients.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
-                      {client.firstName} {client.lastName} - {client.email}
+                      {client.first_name} {client.last_name} - {client.email}
                     </SelectItem>
                   ))}
                 </SelectContent>

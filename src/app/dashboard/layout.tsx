@@ -23,6 +23,7 @@ import {
   UserCircle,
   CreditCard,
   Briefcase,
+  Zap,
 } from 'lucide-react';
 import { getInitials } from '@/lib/utils-format';
 import { useEffect } from 'react';
@@ -50,6 +51,12 @@ const navigation: NavItem[] = [
     href: '/dashboard/appointments',
     label: 'Appointments',
     icon: Calendar,
+  },
+  {
+    href: '/dashboard/leads',
+    label: 'Leads',
+    icon: Zap,
+    roles: ['admin', 'provider'],
   },
   {
     href: '/dashboard/clients',

@@ -284,3 +284,42 @@ export interface SetPasswordDTO {
 export interface MessageResponse {
   message: string;
 }
+
+// Dashboard Statistics Types
+export interface TrendData {
+  total: number;
+  change: number;
+  changePercent: number;
+}
+
+export interface DashboardStatistics {
+  clients: {
+    total: number;
+    active: number;
+  };
+  leads: {
+    total: number;
+    converted: number;
+    conversionRate: number;
+  };
+  appointments: {
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+    trends: {
+      last30Days: TrendData;
+      last90Days: TrendData;
+    };
+  };
+  invoices: {
+    pendingThisMonth: number;
+    totalPending: number;
+  };
+  revenue: {
+    thisMonth: number;
+    trends: {
+      last30Days: TrendData;
+      last90Days: TrendData;
+    };
+  };
+}

@@ -21,6 +21,7 @@ import type {
   RequestPasswordResetDTO,
   SetPasswordDTO,
   MessageResponse,
+  DashboardStatistics,
 } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -545,6 +546,11 @@ class ApiClient {
   // Calendar endpoints
   async initCalendarAuth(): Promise<CalendarAuthResponse> {
     return this.fetch<CalendarAuthResponse>('/calendar/auth/init');
+  }
+
+  // Statistics endpoints
+  async getDashboardStatistics(): Promise<DashboardStatistics> {
+    return this.fetch<DashboardStatistics>('/stats/dashboard');
   }
 }
 

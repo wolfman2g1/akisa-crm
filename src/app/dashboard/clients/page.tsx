@@ -207,7 +207,7 @@ export default function ClientsPage() {
             <DialogHeader>
               <DialogTitle>Add New Client</DialogTitle>
               <DialogDescription>
-                Create a new client account. They will receive an email invitation.
+                Create a new client account. They will receive an email with a link to set their password.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">

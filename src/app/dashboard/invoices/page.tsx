@@ -29,6 +29,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { apiClient } from '@/lib/api-client';
 import { Invoice } from '@/types';
 import Link from 'next/link';
+import { generateInvoicePDF } from '@/lib/pdf-generator';
 
 export default function InvoicesPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -66,7 +67,11 @@ export default function InvoicesPage() {
   const handlePayInvoice = async (invoiceId: string) => {
     setProcessingPayment(invoiceId);
     try {
-      const { url } = await apiClient.createCheckoutSession(invoiceId);
+      const { url } = await apiClient.createCheckoutSession({
+        invoiceId,
+        successUrl: `${window.location.origin}/dashboard/invoices?payment=success`,
+        cancelUrl: `${window.location.origin}/dashboard/invoices?payment=cancelled`,
+      });
       // Redirect to Stripe Checkout
       window.location.href = url;
     } catch (error) {
@@ -76,6 +81,69 @@ export default function InvoicesPage() {
         variant: 'destructive',
       });
       setProcessingPayment(null);
+    }
+  };
+
+  const handleDownloadPDF = async (invoiceId: string) => {
+    try {
+      // Find the invoice
+      const invoice = invoices.find((inv) => inv.id === invoiceId);
+      if (!invoice) {
+        toast({
+          title: 'Error',
+          description: 'Invoice not found.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Fetch client details
+      const client = await apiClient.getClient(invoice.clientId);
+      
+      // Generate PDF
+      await generateInvoicePDF(invoice, client);
+      
+      toast({
+        title: 'Success',
+        description: 'Invoice PDF is ready for download.',
+      });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to generate PDF. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEditInvoice = (invoiceId: string) => {
+    window.location.href = `/dashboard/invoices/edit/${invoiceId}`;
+  };
+
+  const handleSendToClient = async (invoiceId: string) => {
+    toast({
+      title: 'Coming Soon',
+      description: 'Email notification functionality will be implemented soon.',
+    });
+  };
+
+  const handleDeleteInvoice = async (invoiceId: string) => {
+    if (!confirm('Are you sure you want to delete this invoice?')) {
+      return;
+    }
+    try {
+      // TODO: Implement delete invoice API
+      toast({
+        title: 'Coming Soon',
+        description: 'Delete invoice functionality will be implemented soon.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete invoice.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -242,7 +310,7 @@ export default function InvoicesPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownloadPDF(invoice.id)}>
                             <Download className="mr-2 h-4 w-4" />
                             Download PDF
                           </DropdownMenuItem>
@@ -257,13 +325,18 @@ export default function InvoicesPage() {
                           )}
                           {!isClient && (
                             <>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSendToClient(invoice.id)}>
                                 <Send className="mr-2 h-4 w-4" />
                                 Send to Client
                               </DropdownMenuItem>
-                              <DropdownMenuItem>Edit Invoice</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEditInvoice(invoice.id)}>
+                                Edit Invoice
+                              </DropdownMenuItem>
                               {invoice.status === 'draft' && (
-                                <DropdownMenuItem className="text-destructive">
+                                <DropdownMenuItem 
+                                  className="text-destructive"
+                                  onClick={() => handleDeleteInvoice(invoice.id)}
+                                >
                                   Delete Invoice
                                 </DropdownMenuItem>
                               )}

@@ -13,7 +13,8 @@ import type {
   CheckoutSessionResponse,
   SalesStatistics,
   CalendarAuthResponse,
-  AuthResponse
+  AuthResponse,
+  ContactPreference,
 } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -121,7 +122,11 @@ class ApiClient {
     });
 
     // Handle unauthorized - try to refresh token
-    if (response.status === 401 && !NO_REFRESH_ENDPOINTS.has(endpoint)) {
+    if (
+      response.status === 401 &&
+      !NO_REFRESH_ENDPOINTS.has(endpoint) &&
+      this.getRefreshToken()
+    ) {
       // If already refreshing, wait for it to complete
       if (this.isRefreshing && this.refreshPromise) {
         await this.refreshPromise;
@@ -186,10 +191,10 @@ class ApiClient {
   }
 
   // Auth endpoints
-  async login(email: string, password: string): Promise<AuthResponse> {
-    return this.fetch<AuthResponse>('/auth/signin', {
+  async login(username: string, password: string): Promise<AuthResponse> {
+    return this.fetch<AuthResponse>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     });
   }
 
@@ -244,17 +249,78 @@ class ApiClient {
     return this.fetch<Client>(`/client/${id}`);
   }
 
+  private toClientPayload(
+    data: CreateClientDTO | Record<string, unknown>,
+    mode: 'create' | 'update' = 'create'
+  ): CreateClientDTO | Partial<CreateClientDTO> {
+    const input = data as Record<string, unknown>;
+    const firstName = input.firstName as string | undefined;
+    const lastName = input.lastName as string | undefined;
+    const prefContact = input.prefContact as ContactPreference | undefined;
+    const serviceCategory = input.serviceCategory as string | undefined;
+
+    const payload: Partial<CreateClientDTO> = {};
+
+    const assignIfDefined = <T>(
+      key: keyof CreateClientDTO,
+      value: T | null | undefined
+    ) => {
+      if (value !== undefined) {
+        (payload as Record<string, unknown>)[key] = value ?? null;
+      }
+    };
+
+    assignIfDefined('first_name', (input.first_name as string | undefined) ?? firstName);
+    assignIfDefined('last_name', (input.last_name as string | undefined) ?? lastName);
+    assignIfDefined('email', input.email as string | undefined);
+    assignIfDefined('phone', input.phone as string | undefined);
+    assignIfDefined('company', input.company as string | null | undefined);
+    assignIfDefined(
+      'pref_contact',
+      (input.pref_contact as ContactPreference | undefined) ?? prefContact
+    );
+    assignIfDefined(
+      'service_category',
+      (input.service_category as string | null | undefined) ?? serviceCategory
+    );
+    assignIfDefined('street', input.street as string | null | undefined);
+    assignIfDefined('city', input.city as string | null | undefined);
+    assignIfDefined('state', input.state as string | null | undefined);
+    assignIfDefined('postal', input.postal as string | null | undefined);
+    assignIfDefined(
+      'stripeCustomerId',
+      input.stripeCustomerId as string | null | undefined
+    );
+
+    if (mode === 'create') {
+      if (payload.first_name === undefined) payload.first_name = '';
+      if (payload.last_name === undefined) payload.last_name = '';
+      if (payload.email === undefined) payload.email = '';
+      if (payload.phone === undefined) payload.phone = '';
+      if (payload.pref_contact === undefined) payload.pref_contact = 'email';
+      if (payload.company === undefined) payload.company = null;
+      if (payload.service_category === undefined) payload.service_category = null;
+      if (payload.street === undefined) payload.street = null;
+      if (payload.city === undefined) payload.city = null;
+      if (payload.state === undefined) payload.state = null;
+      if (payload.postal === undefined) payload.postal = null;
+      if (payload.stripeCustomerId === undefined) payload.stripeCustomerId = null;
+    }
+
+    return payload as CreateClientDTO | Partial<CreateClientDTO>;
+  }
+
   async createClient(data: CreateClientDTO): Promise<Client> {
     return this.fetch<Client>('/client', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(this.toClientPayload(data, 'create')),
     });
   }
 
   async updateClient(id: string, data: Partial<CreateClientDTO>): Promise<Client> {
     return this.fetch<Client>(`/client/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify(this.toClientPayload(data, 'update')),
     });
   }
 

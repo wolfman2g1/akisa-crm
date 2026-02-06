@@ -225,7 +225,16 @@ export interface User {
 }
 
 export interface AuthResponse {
-  user: User;
-  accessToken: string;
-  refreshToken: string;
+  user: (Partial<User> & {
+    access_token?: string;
+    refresh_token?: string;
+  });
+  accessToken?: string;
+  refreshToken?: string;
+  token?: string;
+  data?: {
+    accessToken?: string;
+    refreshToken?: string;
+    token?: string;
+  };
 }

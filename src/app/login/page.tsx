@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +24,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      await login(username, password);
       router.push('/dashboard');
     } catch (err) {
       setError('Invalid email or password');
@@ -57,15 +57,17 @@ export default function LoginPage() {
               )}
               
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="username"
+                  type="text"
+                  placeholder="your.username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                   disabled={isLoading}
+                  autoCapitalize="none"
+                  autoCorrect="off"
                 />
               </div>
               

@@ -15,6 +15,8 @@ import type {
   CalendarAuthResponse,
   AuthResponse,
   ContactPreference,
+  InvoiceEmailDTO,
+  InvoiceEmailResponse,
 } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -452,6 +454,21 @@ class ApiClient {
   async updateInvoice(id: string, data: Partial<CreateInvoiceDTO>): Promise<Invoice> {
     return this.fetch<Invoice>(`/invoice/${id}`, {
       method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateInvoiceStatus(id: string, status: string): Promise<Invoice> {
+    return this.fetch<Invoice>(`/invoice/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  // Email endpoints
+  async sendInvoiceEmail(data: InvoiceEmailDTO): Promise<InvoiceEmailResponse> {
+    return this.fetch<InvoiceEmailResponse>('/email/send-invoice', {
+      method: 'POST',
       body: JSON.stringify(data),
     });
   }

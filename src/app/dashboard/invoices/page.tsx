@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,18 +28,22 @@ import { formatDate, formatCurrency, getStatusColor } from '@/lib/utils-format';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/components/ui/use-toast';
 import { apiClient } from '@/lib/api-client';
-import { Invoice } from '@/types';
+import { Invoice, InvoiceStatus } from '@/types';
 import Link from 'next/link';
 import { generateInvoicePDF } from '@/lib/pdf-generator';
 
 export default function InvoicesPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
+
+  const [sendingInvoice, setSendingInvoice] = useState<string | null>(null);
 
   const isClient = user?.role === 'client';
 
@@ -47,6 +52,44 @@ export default function InvoicesPage() {
       loadInvoices();
     }
   }, [authLoading, user]);
+
+  // Handle payment return from Stripe
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment');
+    const invoiceId = searchParams.get('invoiceId');
+
+    if (paymentStatus === 'success') {
+      toast({
+        title: 'Payment Successful',
+        description: 'Your payment has been processed successfully.',
+      });
+
+      // If we have the invoiceId, update its status to 'paid'
+      if (invoiceId) {
+        apiClient.updateInvoiceStatus(invoiceId, 'paid')
+          .then(() => {
+            setInvoices((prev) =>
+              prev.map((inv) =>
+                inv.id === invoiceId ? { ...inv, status: 'paid' as InvoiceStatus } : inv
+              )
+            );
+          })
+          .catch((err) => {
+            console.error('Failed to update invoice status:', err);
+          });
+      }
+
+      // Clean up the URL params
+      router.replace('/dashboard/invoices');
+    } else if (paymentStatus === 'cancelled') {
+      toast({
+        title: 'Payment Cancelled',
+        description: 'Your payment was cancelled. You can try again anytime.',
+        variant: 'destructive',
+      });
+      router.replace('/dashboard/invoices');
+    }
+  }, [searchParams, toast, router]);
 
   const loadInvoices = async () => {
     try {
@@ -69,7 +112,7 @@ export default function InvoicesPage() {
     try {
       const { url } = await apiClient.createCheckoutSession({
         invoiceId,
-        successUrl: `${window.location.origin}/dashboard/invoices?payment=success`,
+        successUrl: `${window.location.origin}/dashboard/invoices?payment=success&invoiceId=${invoiceId}`,
         cancelUrl: `${window.location.origin}/dashboard/invoices?payment=cancelled`,
       });
       // Redirect to Stripe Checkout
@@ -122,10 +165,49 @@ export default function InvoicesPage() {
   };
 
   const handleSendToClient = async (invoiceId: string) => {
-    toast({
-      title: 'Coming Soon',
-      description: 'Email notification functionality will be implemented soon.',
-    });
+    const invoice = invoices.find((inv) => inv.id === invoiceId);
+    if (!invoice) {
+      toast({
+        title: 'Error',
+        description: 'Invoice not found.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSendingInvoice(invoiceId);
+    try {
+      const response = await apiClient.sendInvoiceEmail({
+        clientId: invoice.clientId,
+        invoiceDetails: {
+          invoiceNumber: invoice.invoiceNumber,
+          amount: invoice.total || '0',
+        },
+      });
+
+      // Update invoice status to 'issued' in the backend
+      await apiClient.updateInvoiceStatus(invoiceId, 'issued');
+
+      // Update local state
+      setInvoices((prev) =>
+        prev.map((inv) =>
+          inv.id === invoiceId ? { ...inv, status: 'issued' as const } : inv
+        )
+      );
+
+      toast({
+        title: 'Invoice Sent',
+        description: response.message || 'Invoice email sent and status updated to issued.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to send invoice email.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingInvoice(null);
+    }
   };
 
   const handleDeleteInvoice = async (invoiceId: string) => {
@@ -247,7 +329,7 @@ export default function InvoicesPage() {
                 <TableHead>Due Date</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
+                <TableHead className={isClient ? 'w-[180px]' : 'w-[50px]'}></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -301,7 +383,20 @@ export default function InvoicesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
+                      <div className="flex items-center gap-2">
+                        {/* Prominent Pay Now button for clients with unpaid invoices */}
+                        {isClient && invoice.status !== 'paid' && invoice.status !== 'cancelled' && invoice.status !== 'draft' && (
+                          <Button
+                            size="sm"
+                            onClick={() => handlePayInvoice(invoice.id)}
+                            disabled={processingPayment === invoice.id}
+                            className="bg-[#C97D60] hover:bg-[#B56D50] text-white"
+                          >
+                            <CreditCard className="mr-1.5 h-3.5 w-3.5" />
+                            {processingPayment === invoice.id ? 'Processing...' : 'Pay Now'}
+                          </Button>
+                        )}
+                        <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
                             <MoreVertical className="h-4 w-4" />
@@ -325,9 +420,12 @@ export default function InvoicesPage() {
                           )}
                           {!isClient && (
                             <>
-                              <DropdownMenuItem onClick={() => handleSendToClient(invoice.id)}>
+                              <DropdownMenuItem 
+                                onClick={() => handleSendToClient(invoice.id)}
+                                disabled={sendingInvoice === invoice.id}
+                              >
                                 <Send className="mr-2 h-4 w-4" />
-                                Send to Client
+                                {sendingInvoice === invoice.id ? 'Sending...' : 'Send to Client'}
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEditInvoice(invoice.id)}>
                                 Edit Invoice
@@ -344,6 +442,7 @@ export default function InvoicesPage() {
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

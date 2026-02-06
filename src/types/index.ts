@@ -157,8 +157,16 @@ export interface Invoice {
   subtotal: string;
   tax?: string | null;
   total: string;
+  amount: string;
   paidAmount: string;
+  notes?: string | null;
   lineItems: InvoiceLineItem[];
+  client?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -177,6 +185,19 @@ export interface CreateInvoiceDTO {
     unitPrice: number;
   }[];
   tax?: string | number | null;
+}
+
+// Email Types
+export interface InvoiceEmailDTO {
+  clientId: string;
+  invoiceDetails: {
+    invoiceNumber: string;
+    amount: string;
+  };
+}
+
+export interface InvoiceEmailResponse {
+  message: string;
 }
 
 // Stripe Types

@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Calendar, Users, FileText, TrendingUp, Clock, DollarSign } from 'lucide-react';
+import { Calendar, Users, FileText, TrendingUp, Clock, DollarSign, Briefcase } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user, isAdmin, isProvider, isClient } = useAuth();
@@ -24,6 +24,14 @@ export default function DashboardPage() {
       icon: Users,
       description: '+3 this month',
       href: '/dashboard/clients',
+      show: isAdmin || isProvider,
+    },
+    {
+      title: 'Active Services',
+      value: '6',
+      icon: Briefcase,
+      description: 'Available offerings',
+      href: '/dashboard/services',
       show: isAdmin || isProvider,
     },
     {

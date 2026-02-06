@@ -22,6 +22,7 @@ import {
   LayoutDashboard,
   UserCircle,
   CreditCard,
+  Briefcase,
 } from 'lucide-react';
 import { getInitials } from '@/lib/utils-format';
 import { useEffect } from 'react';
@@ -54,6 +55,12 @@ const navigation: NavItem[] = [
     href: '/dashboard/clients',
     label: 'Clients',
     icon: Users,
+    roles: ['admin', 'provider'],
+  },
+  {
+    href: '/dashboard/services',
+    label: 'Services',
+    icon: Briefcase,
     roles: ['admin', 'provider'],
   },
   {

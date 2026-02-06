@@ -287,10 +287,6 @@ class ApiClient {
     assignIfDefined('city', input.city as string | null | undefined);
     assignIfDefined('state', input.state as string | null | undefined);
     assignIfDefined('postal', input.postal as string | null | undefined);
-    assignIfDefined(
-      'stripeCustomerId',
-      input.stripeCustomerId as string | null | undefined
-    );
 
     if (mode === 'create') {
       if (payload.first_name === undefined) payload.first_name = '';
@@ -304,7 +300,6 @@ class ApiClient {
       if (payload.city === undefined) payload.city = null;
       if (payload.state === undefined) payload.state = null;
       if (payload.postal === undefined) payload.postal = null;
-      if (payload.stripeCustomerId === undefined) payload.stripeCustomerId = null;
     }
 
     return payload as CreateClientDTO | Partial<CreateClientDTO>;

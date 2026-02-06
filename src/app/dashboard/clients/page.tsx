@@ -34,9 +34,16 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Search, Plus, MoreVertical, Mail, Phone, Loader2 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { getInitials, formatPhoneNumber } from '@/lib/utils-format';
 import { apiClient } from '@/lib/api-client';
-import { Client } from '@/types';
+import { Client, ContactPreference } from '@/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
@@ -46,6 +53,13 @@ interface NewClientForm {
   lastName: string;
   email: string;
   phone: string;
+  company?: string;
+  prefContact: ContactPreference;
+  serviceCategory?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  postal?: string;
 }
 
 export default function ClientsPage() {
@@ -60,6 +74,13 @@ export default function ClientsPage() {
     lastName: '',
     email: '',
     phone: '',
+    company: '',
+    prefContact: 'email',
+    serviceCategory: '',
+    street: '',
+    city: '',
+    state: '',
+    postal: '',
   });
   const { toast } = useToast();
   const router = useRouter();
@@ -104,14 +125,33 @@ export default function ClientsPage() {
     setIsAddingClient(true);
     try {
       const newClient = await apiClient.createClient({
-        firstName: newClientForm.firstName,
-        lastName: newClientForm.lastName,
+        first_name: newClientForm.firstName,
+        last_name: newClientForm.lastName,
         email: newClientForm.email,
-        phone: newClientForm.phone || undefined,
+        phone: newClientForm.phone || '',
+        company: newClientForm.company || null,
+        pref_contact: newClientForm.prefContact,
+        service_category: newClientForm.serviceCategory || null,
+        street: newClientForm.street || null,
+        city: newClientForm.city || null,
+        state: newClientForm.state || null,
+        postal: newClientForm.postal || null,
       });
       
       setClients([newClient, ...clients]);
-      setNewClientForm({ firstName: '', lastName: '', email: '', phone: '' });
+      setNewClientForm({ 
+        firstName: '', 
+        lastName: '', 
+        email: '', 
+        phone: '',
+        company: '',
+        prefContact: 'email',
+        serviceCategory: '',
+        street: '',
+        city: '',
+        state: '',
+        postal: '',
+      });
       setIsDialogOpen(false);
       toast({
         title: 'Success',
@@ -170,7 +210,7 @@ export default function ClientsPage() {
                 Create a new client account. They will receive an email invitation.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name *</Label>
@@ -218,6 +258,91 @@ export default function ClientsPage() {
                   }
                   placeholder="(555) 123-4567"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="prefContact">Preferred Contact Method *</Label>
+                <Select value={newClientForm.prefContact} onValueChange={(value) =>
+                  setNewClientForm({ ...newClientForm, prefContact: value as ContactPreference })
+                }>
+                  <SelectTrigger id="prefContact">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="phone">Phone</SelectItem>
+                    <SelectItem value="sms">SMS</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="company">Company</Label>
+                <Input
+                  id="company"
+                  value={newClientForm.company || ''}
+                  onChange={(e) =>
+                    setNewClientForm({ ...newClientForm, company: e.target.value || undefined })
+                  }
+                  placeholder="Acme Corp"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="serviceCategory">Service Category</Label>
+                <Input
+                  id="serviceCategory"
+                  value={newClientForm.serviceCategory || ''}
+                  onChange={(e) =>
+                    setNewClientForm({ ...newClientForm, serviceCategory: e.target.value || undefined })
+                  }
+                  placeholder="e.g., Therapy, Counseling"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="street">Street Address</Label>
+                  <Input
+                    id="street"
+                    value={newClientForm.street || ''}
+                    onChange={(e) =>
+                      setNewClientForm({ ...newClientForm, street: e.target.value || undefined })
+                    }
+                    placeholder="123 Main St"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    value={newClientForm.city || ''}
+                    onChange={(e) =>
+                      setNewClientForm({ ...newClientForm, city: e.target.value || undefined })
+                    }
+                    placeholder="New York"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Input
+                    id="state"
+                    value={newClientForm.state || ''}
+                    onChange={(e) =>
+                      setNewClientForm({ ...newClientForm, state: e.target.value || undefined })
+                    }
+                    placeholder="NY"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="postal">Postal Code</Label>
+                  <Input
+                    id="postal"
+                    value={newClientForm.postal || ''}
+                    onChange={(e) =>
+                      setNewClientForm({ ...newClientForm, postal: e.target.value || undefined })
+                    }
+                    placeholder="10001"
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter>

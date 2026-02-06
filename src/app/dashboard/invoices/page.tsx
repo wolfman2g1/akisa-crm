@@ -92,13 +92,13 @@ export default function InvoicesPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const totalAmount = filteredInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+  const totalAmount = filteredInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
   const paidAmount = filteredInvoices
     .filter(inv => inv.status === 'paid')
-    .reduce((sum, inv) => sum + inv.totalAmount, 0);
+    .reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
   const pendingAmount = filteredInvoices
     .filter(inv => inv.status === 'issued' || inv.status === 'past_due')
-    .reduce((sum, inv) => sum + inv.totalAmount, 0);
+    .reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
 
   return (
     <div className="space-y-6">
@@ -222,7 +222,7 @@ export default function InvoicesPage() {
                       )}
                     </TableCell>
                     <TableCell className="font-mono font-semibold">
-                      {formatCurrency(invoice.totalAmount.toString())}
+                      {formatCurrency(invoice.total || '0')}
                     </TableCell>
                     <TableCell>
                       <Badge

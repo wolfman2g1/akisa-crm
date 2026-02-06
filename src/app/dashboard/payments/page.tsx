@@ -91,7 +91,7 @@ export default function PaymentsPage() {
 
   const unpaidInvoices = invoices.filter((inv) => inv.status !== 'paid');
   const paidInvoices = invoices.filter((inv) => inv.status === 'paid');
-  const totalOutstanding = unpaidInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+  const totalOutstanding = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || '0'), 0);
 
   if (loading) {
     return (
@@ -194,7 +194,7 @@ export default function PaymentsPage() {
                       <div className="text-right">
                         <p className="text-sm text-gray-600">Amount Due</p>
                         <p className="text-2xl font-bold text-[#4A3F35]">
-                          {formatCurrency(invoice.totalAmount)}
+                          {formatCurrency(invoice.total || '0')}
                         </p>
                       </div>
                       <Button
@@ -236,7 +236,7 @@ export default function PaymentsPage() {
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-[#4A3F35]">
-                          {formatCurrency(invoice.totalAmount)}
+                          {formatCurrency(invoice.total || '0')}
                         </p>
                         {getStatusBadge(invoice.status)}
                       </div>

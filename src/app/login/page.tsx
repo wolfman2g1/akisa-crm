@@ -38,7 +38,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Akisa</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Resiliency Counseling Group LLC</h1>
           <p className="text-muted-foreground">Management System</p>
         </div>
 
@@ -112,7 +112,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          © 2024 Akisa Management System
+          © 2026 Resiliency Counseling Group LLC
         </p>
       </div>
     </div>

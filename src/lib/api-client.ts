@@ -252,8 +252,7 @@ class ApiClient {
 
   // Auth endpoints
   async login(username: string, password: string): Promise<AuthResponse> {
-    // Backend expects /auth/signin (not /auth/login)
-    return this.fetch<AuthResponse>('/auth/signin', {
+    return this.fetch<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });

@@ -132,7 +132,7 @@ export default function DashboardLayout({
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-8">
             <Link href="/dashboard" className="flex items-center space-x-2">
-              <span className="text-2xl font-bold">Akisa</span>
+              <span className="text-2xl font-bold">Resiliency Counseling Group LLC</span>
             </Link>
             
             <nav className="hidden md:flex items-center space-x-1">

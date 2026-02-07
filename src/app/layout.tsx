@@ -23,7 +23,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Akisa Management System",
+  title: "Resiliency Counseling Group LLC Management System",
   description: "Professional client management, scheduling, and billing system for psychology practice",
 };
 

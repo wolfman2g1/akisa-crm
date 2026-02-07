@@ -284,7 +284,7 @@ export async function generateInvoicePDF(invoice: Invoice, client: Client) {
         <div class="invoice-container">
           <div class="header">
             <div class="company-info">
-              <h1>Akisa Management</h1>
+              <h1>Resiliency Counseling Group LLC Management</h1>
               <p>Professional Psychology Services</p>
             </div>
             <div class="invoice-details">
